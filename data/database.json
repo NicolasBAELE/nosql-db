@@ -1,0 +1,14 @@
+{
+  "Collections": {
+    "products": {
+      "Name": "products",
+      "Documents": {},
+      "Indexes": {}
+    },
+    "users": {
+      "Name": "users",
+      "Documents": {},
+      "Indexes": {}
+    }
+  }
+}
