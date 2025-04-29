@@ -58,14 +58,5 @@ func (db *Database) GetCollection(name string) (*Collection, bool) {
 
 // ListCollections retourne la liste des collections disponibles
 func (db *Database) ListCollections() []string {
-	collections := []string{"users", "products"}
-	available := make([]string, 0)
-
-	for _, name := range collections {
-		if _, exists := db.manager.GetModel(name); exists {
-			available = append(available, name)
-		}
-	}
-
-	return available
+	return db.manager.GetModelNames()
 }

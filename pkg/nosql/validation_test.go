@@ -15,15 +15,15 @@ func TestValidation(t *testing.T) {
 	// Test de validation des types de champs
 	t.Run("FieldTypeValidation", func(t *testing.T) {
 		// Ajouter des champs avec différents types
-		collection.AddField("string_field", FieldTypeString)
-		collection.AddField("number_field", FieldTypeNumber)
-		collection.AddField("boolean_field", FieldTypeBoolean)
+		collection.AddField("name", FieldTypeString, true, false)
+		collection.AddField("age", FieldTypeNumber, true, false)
+		collection.AddField("active", FieldTypeBoolean, true, false)
 
 		// Test avec des valeurs valides
 		validDoc := map[string]interface{}{
-			"string_field":  "test",
-			"number_field":  42,
-			"boolean_field": true,
+			"name":   "John Doe",
+			"age":    30,
+			"active": true,
 		}
 		_, err := collection.Insert(validDoc)
 		if err != nil {
@@ -32,9 +32,9 @@ func TestValidation(t *testing.T) {
 
 		// Test avec une chaîne au lieu d'un nombre
 		invalidNumberDoc := map[string]interface{}{
-			"string_field":  "test",
-			"number_field":  "not a number",
-			"boolean_field": true,
+			"name":   "John Doe",
+			"age":    "not a number",
+			"active": true,
 		}
 		_, err = collection.Insert(invalidNumberDoc)
 		if err == nil {
@@ -43,9 +43,9 @@ func TestValidation(t *testing.T) {
 
 		// Test avec un nombre au lieu d'un booléen
 		invalidBooleanDoc := map[string]interface{}{
-			"string_field":  "test",
-			"number_field":  42,
-			"boolean_field": 1,
+			"name":   "John Doe",
+			"age":    30,
+			"active": 1,
 		}
 		_, err = collection.Insert(invalidBooleanDoc)
 		if err == nil {
@@ -57,13 +57,15 @@ func TestValidation(t *testing.T) {
 	t.Run("MissingFields", func(t *testing.T) {
 		// Créer une nouvelle collection pour ce test
 		collection, _ = db.CreateCollection("test_collection_2")
-		collection.AddField("required_field", FieldTypeString)
-		collection.AddField("optional_field", FieldTypeString)
+		collection.AddField("name", FieldTypeString, true, false)
+		collection.AddField("age", FieldTypeNumber, true, false)
+		collection.AddField("active", FieldTypeBoolean, false, false)
 
 		// Test avec tous les champs
 		completeDoc := map[string]interface{}{
-			"required_field": "value",
-			"optional_field": "value",
+			"name":   "John Doe",
+			"age":    30,
+			"active": true,
 		}
 		_, err := collection.Insert(completeDoc)
 		if err != nil {
@@ -72,7 +74,8 @@ func TestValidation(t *testing.T) {
 
 		// Test avec uniquement le champ requis
 		requiredOnlyDoc := map[string]interface{}{
-			"required_field": "value",
+			"name": "John Doe",
+			"age":  30,
 		}
 		_, err = collection.Insert(requiredOnlyDoc)
 		if err != nil {
@@ -81,7 +84,7 @@ func TestValidation(t *testing.T) {
 
 		// Test sans le champ requis
 		missingRequiredDoc := map[string]interface{}{
-			"optional_field": "value",
+			"active": true,
 		}
 		_, err = collection.Insert(missingRequiredDoc)
 		if err == nil {
@@ -93,13 +96,11 @@ func TestValidation(t *testing.T) {
 	t.Run("NumberTypeValidation", func(t *testing.T) {
 		// Créer une nouvelle collection pour ce test
 		collection, _ = db.CreateCollection("test_collection_3")
-		collection.AddField("integer_field", FieldTypeNumber)
-		collection.AddField("float_field", FieldTypeNumber)
+		collection.AddField("price", FieldTypeNumber, true, false)
 
 		// Test avec des entiers
 		integerDoc := map[string]interface{}{
-			"integer_field": 42,
-			"float_field":   3.14,
+			"price": 42,
 		}
 		_, err := collection.Insert(integerDoc)
 		if err != nil {
@@ -108,8 +109,7 @@ func TestValidation(t *testing.T) {
 
 		// Test avec des flottants
 		floatDoc := map[string]interface{}{
-			"integer_field": 42.0,
-			"float_field":   3.14,
+			"price": 42.0,
 		}
 		_, err = collection.Insert(floatDoc)
 		if err != nil {
@@ -118,8 +118,7 @@ func TestValidation(t *testing.T) {
 
 		// Test avec des nombres négatifs
 		negativeDoc := map[string]interface{}{
-			"integer_field": -42,
-			"float_field":   -3.14,
+			"price": -42,
 		}
 		_, err = collection.Insert(negativeDoc)
 		if err != nil {
@@ -131,11 +130,11 @@ func TestValidation(t *testing.T) {
 	t.Run("StringValidation", func(t *testing.T) {
 		// Créer une nouvelle collection pour ce test
 		collection, _ = db.CreateCollection("test_collection_4")
-		collection.AddField("string_field", FieldTypeString)
+		collection.AddField("name", FieldTypeString, true, false)
 
 		// Test avec une chaîne vide
 		emptyStringDoc := map[string]interface{}{
-			"string_field": "",
+			"name": "",
 		}
 		_, err := collection.Insert(emptyStringDoc)
 		if err != nil {
@@ -144,7 +143,7 @@ func TestValidation(t *testing.T) {
 
 		// Test avec une chaîne contenant des caractères spéciaux
 		specialCharsDoc := map[string]interface{}{
-			"string_field": "test@#$%^&*()",
+			"name": "John Doe@#$%^&*()",
 		}
 		_, err = collection.Insert(specialCharsDoc)
 		if err != nil {
@@ -153,7 +152,7 @@ func TestValidation(t *testing.T) {
 
 		// Test avec une chaîne contenant des espaces
 		spacesDoc := map[string]interface{}{
-			"string_field": "test with spaces",
+			"name": "John Doe with spaces",
 		}
 		_, err = collection.Insert(spacesDoc)
 		if err != nil {
@@ -165,11 +164,11 @@ func TestValidation(t *testing.T) {
 	t.Run("BooleanValidation", func(t *testing.T) {
 		// Créer une nouvelle collection pour ce test
 		collection, _ = db.CreateCollection("test_collection_5")
-		collection.AddField("boolean_field", FieldTypeBoolean)
+		collection.AddField("active", FieldTypeBoolean, true, false)
 
 		// Test avec true
 		trueDoc := map[string]interface{}{
-			"boolean_field": true,
+			"active": true,
 		}
 		_, err := collection.Insert(trueDoc)
 		if err != nil {
@@ -178,7 +177,7 @@ func TestValidation(t *testing.T) {
 
 		// Test avec false
 		falseDoc := map[string]interface{}{
-			"boolean_field": false,
+			"active": false,
 		}
 		_, err = collection.Insert(falseDoc)
 		if err != nil {

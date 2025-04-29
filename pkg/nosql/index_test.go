@@ -13,16 +13,23 @@ func TestIndexes(t *testing.T) {
 	collection, _ := db.CreateCollection("test_collection")
 
 	// Test d'ajout de champs
-	collection.AddField("name", FieldTypeString)
-	collection.AddField("price", FieldTypeNumber)
-	collection.AddField("stock", FieldTypeNumber)
+	collection.AddField("name", FieldTypeString, false, true)
+	collection.AddField("price", FieldTypeNumber, false, false)
+	collection.AddField("stock", FieldTypeNumber, false, false)
 
 	// Test d'ajout d'index
 	t.Run("AddIndex", func(t *testing.T) {
-		// Test d'ajout d'index unique
+		collection.AddField("email", FieldTypeString, true, true)
+		collection.AddField("age", FieldTypeNumber, false, false)
+
 		err := collection.AddIndex("name", "unique")
 		if err != nil {
-			t.Errorf("AddIndex() error = %v", err)
+			t.Errorf("AddIndex() failed: %v", err)
+		}
+
+		err = collection.AddIndex("email", "unique")
+		if err != nil {
+			t.Errorf("AddIndex() failed: %v", err)
 		}
 
 		// Test d'ajout d'index standard
@@ -41,8 +48,8 @@ func TestIndexes(t *testing.T) {
 	// Test de récupération des index
 	t.Run("GetIndexes", func(t *testing.T) {
 		indexes := collection.GetIndexes()
-		if len(indexes) != 2 {
-			t.Errorf("GetIndexes() returned %d indexes, expected 2", len(indexes))
+		if len(indexes) != 3 {
+			t.Errorf("GetIndexes() returned %d indexes, expected 3", len(indexes))
 		}
 
 		// Vérifier les types d'index
@@ -52,15 +59,20 @@ func TestIndexes(t *testing.T) {
 		if indexes["price"] != "standard" {
 			t.Errorf("GetIndexes() returned wrong type for price index: %v", indexes["price"])
 		}
+		if indexes["email"] != "unique" {
+			t.Errorf("GetIndexes() returned wrong type for email index: %v", indexes["email"])
+		}
 	})
 
 	// Test de contrainte d'unicité
 	t.Run("UniqueConstraint", func(t *testing.T) {
+		collection.Clear()
 		// Insérer un premier document
 		doc1 := map[string]interface{}{
 			"name":  "Product1",
 			"price": 100,
 			"stock": 10,
+			"email": "product1@test.com",
 		}
 		_, err := collection.Insert(doc1)
 		if err != nil {
@@ -72,6 +84,7 @@ func TestIndexes(t *testing.T) {
 			"name":  "Product1", // Même nom
 			"price": 200,
 			"stock": 20,
+			"email": "product2@test.com",
 		}
 		_, err = collection.Insert(doc2)
 		if err == nil {
@@ -83,6 +96,7 @@ func TestIndexes(t *testing.T) {
 			"name":  "Product2", // Nom différent
 			"price": 300,
 			"stock": 30,
+			"email": "product3@test.com",
 		}
 		_, err = collection.Insert(doc3)
 		if err != nil {
@@ -92,6 +106,19 @@ func TestIndexes(t *testing.T) {
 
 	// Test de recherche avec index
 	t.Run("SearchWithIndex", func(t *testing.T) {
+		collection.Clear()
+		// Insérer un document pour le test
+		doc := map[string]interface{}{
+			"name":  "Product1",
+			"price": 100,
+			"stock": 10,
+			"email": "product1@test.com",
+		}
+		_, err := collection.Insert(doc)
+		if err != nil {
+			t.Errorf("Insert() error = %v", err)
+		}
+
 		// Rechercher par nom (index unique)
 		results, err := collection.FindByField("name", "Product1")
 		if err != nil {

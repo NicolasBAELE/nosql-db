@@ -14,13 +14,13 @@ func TestCollection(t *testing.T) {
 
 	// Test d'ajout de champs
 	t.Run("AddField", func(t *testing.T) {
-		collection.AddField("name", FieldTypeString)
-		collection.AddField("age", FieldTypeNumber)
-		collection.AddField("active", FieldTypeBoolean)
+		collection.AddField("name", FieldTypeString, true, false)
+		collection.AddField("age", FieldTypeNumber, false, false)
+		collection.AddField("active", FieldTypeBoolean, false, false)
 
 		fields := collection.GetFields()
 		if len(fields) != 3 {
-			t.Errorf("GetFields() returned %d fields, expected 3", len(fields))
+			t.Errorf("Expected 3 fields, got %d", len(fields))
 		}
 
 		// Vérifier les types des champs
@@ -43,6 +43,7 @@ func TestCollection(t *testing.T) {
 
 	// Test d'insertion de document
 	t.Run("Insert", func(t *testing.T) {
+		collection.Clear()
 		doc := map[string]interface{}{
 			"name":   "John Doe",
 			"age":    30,
@@ -60,6 +61,7 @@ func TestCollection(t *testing.T) {
 
 	// Test de récupération de document
 	t.Run("Get", func(t *testing.T) {
+		collection.Clear()
 		// Insérer un document pour le test
 		doc := map[string]interface{}{
 			"name":   "Jane Doe",
@@ -91,6 +93,7 @@ func TestCollection(t *testing.T) {
 
 	// Test de mise à jour de document
 	t.Run("Update", func(t *testing.T) {
+		collection.Clear()
 		// Insérer un document pour le test
 		doc := map[string]interface{}{
 			"name":   "Bob Smith",
@@ -122,6 +125,7 @@ func TestCollection(t *testing.T) {
 
 	// Test de suppression de document
 	t.Run("Delete", func(t *testing.T) {
+		collection.Clear()
 		// Insérer un document pour le test
 		doc := map[string]interface{}{
 			"name":   "Alice Brown",
@@ -145,6 +149,7 @@ func TestCollection(t *testing.T) {
 
 	// Test de recherche par champ
 	t.Run("FindByField", func(t *testing.T) {
+		collection.Clear()
 		// Insérer plusieurs documents pour le test
 		docs := []map[string]interface{}{
 			{"name": "Test1", "age": 20, "active": true},
@@ -177,6 +182,7 @@ func TestCollection(t *testing.T) {
 
 	// Test de récupération de tous les documents
 	t.Run("GetAll", func(t *testing.T) {
+		collection.Clear()
 		// Insérer quelques documents pour le test
 		docs := []map[string]interface{}{
 			{"name": "All1", "age": 25, "active": true},
@@ -199,6 +205,7 @@ func TestCollection(t *testing.T) {
 
 	// Test de comptage des documents
 	t.Run("Count", func(t *testing.T) {
+		collection.Clear()
 		// Insérer quelques documents pour le test
 		docs := []map[string]interface{}{
 			{"name": "Count1", "age": 40, "active": true},

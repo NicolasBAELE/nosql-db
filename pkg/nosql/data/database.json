@@ -10,6 +10,26 @@
       "Documents": {},
       "Indexes": {}
     },
+    "test_collection_2": {
+      "Name": "test_collection_2",
+      "Documents": {},
+      "Indexes": {}
+    },
+    "test_collection_3": {
+      "Name": "test_collection_3",
+      "Documents": {},
+      "Indexes": {}
+    },
+    "test_collection_4": {
+      "Name": "test_collection_4",
+      "Documents": {},
+      "Indexes": {}
+    },
+    "test_collection_5": {
+      "Name": "test_collection_5",
+      "Documents": {},
+      "Indexes": {}
+    },
     "users": {
       "Name": "users",
       "Documents": {},

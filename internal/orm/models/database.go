@@ -138,3 +138,14 @@ func (dm *DatabaseManager) AddModel(name string, model ModelInterface) {
 func (dm *DatabaseManager) GetDatabase() *db.Database {
 	return dm.database
 }
+
+// GetModelNames retourne la liste des noms de modèles
+func (dm *DatabaseManager) GetModelNames() []string {
+	dm.mu.RLock()
+	defer dm.mu.RUnlock()
+	names := make([]string, 0, len(dm.models))
+	for name := range dm.models {
+		names = append(names, name)
+	}
+	return names
+}
