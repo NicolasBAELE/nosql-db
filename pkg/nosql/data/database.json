@@ -1,0 +1,19 @@
+{
+  "Collections": {
+    "products": {
+      "Name": "products",
+      "Documents": {},
+      "Indexes": {}
+    },
+    "test_collection": {
+      "Name": "test_collection",
+      "Documents": {},
+      "Indexes": {}
+    },
+    "users": {
+      "Name": "users",
+      "Documents": {},
+      "Indexes": {}
+    }
+  }
+}

@@ -6,6 +6,8 @@ Une bibliothèque Go légère pour une base de données NoSQL avec un ORM intég
 
 - [Installation](#installation)
 - [Fonctionnalités](#fonctionnalités)
+- [Types de Champs](#types-de-champs)
+- [Indexation](#indexation)
 - [Utilisation comme bibliothèque](#utilisation-comme-bibliothèque)
   - [Initialisation](#initialisation)
   - [Gestion des collections](#gestion-des-collections)
@@ -66,6 +68,106 @@ go mod download
 - Création interactive de collections
 - Manipulation des documents via CLI
 - Interface utilisateur intuitive
+
+## Types de Champs
+
+La base de données supporte trois types de champs fondamentaux :
+
+| Type      | Description                                    | Exemple                |
+|-----------|------------------------------------------------|------------------------|
+| string    | Chaînes de caractères                          | "Laptop", "John Doe"   |
+| number    | Nombres (entiers ou décimaux)                  | 42, 3.14, 999.99      |
+| boolean   | Valeurs booléennes                             | true, false           |
+
+## Indexation
+
+La base de données propose un système d'indexation puissant pour optimiser les performances des recherches.
+
+### Types d'Index
+
+| Type      | Description                                    | Utilisation            |
+|-----------|------------------------------------------------|------------------------|
+| unique    | Garantit l'unicité des valeurs                 | IDs, emails, noms uniques |
+| standard  | Optimise les recherches sans contrainte d'unicité| Prix, dates, catégories |
+
+### Utilisation des Index
+
+```go
+// Création d'une collection
+collection, err := db.CreateCollection("products")
+
+// Ajout de champs
+collection.AddField("name", nosql.FieldTypeString)
+collection.AddField("price", nosql.FieldTypeNumber)
+collection.AddField("stock", nosql.FieldTypeNumber)
+
+// Ajout d'index
+collection.AddIndex("name", "unique")    // Index unique sur le nom
+collection.AddIndex("price", "standard") // Index standard sur le prix
+```
+
+### Comportement des Index
+
+#### Index Unique
+- Garantit que chaque valeur dans le champ indexé est unique
+- Empêche l'insertion de documents avec des valeurs en double
+- Idéal pour les identifiants naturels (email, nom d'utilisateur, etc.)
+
+Exemple :
+```go
+// Premier document (succès)
+doc1 := map[string]interface{}{
+    "name": "Laptop",
+    "price": 999.99,
+}
+id1, _ := collection.Insert(doc1)
+
+// Deuxième document avec le même nom (échec)
+doc2 := map[string]interface{}{
+    "name": "Laptop", // Erreur : nom déjà utilisé
+    "price": 899.99,
+}
+id2, err := collection.Insert(doc2) // Retourne une erreur
+```
+
+#### Index Standard
+- Améliore les performances de recherche sans contrainte d'unicité
+- Permet des valeurs en double dans le champ indexé
+- Utile pour les champs fréquemment utilisés dans les recherches
+
+Exemple :
+```go
+// Premier document
+doc1 := map[string]interface{}{
+    "name": "Laptop",
+    "price": 999.99,
+}
+collection.Insert(doc1)
+
+// Deuxième document avec le même prix (succès)
+doc2 := map[string]interface{}{
+    "name": "Tablet",
+    "price": 999.99, // OK : même prix autorisé
+}
+collection.Insert(doc2)
+```
+
+### Bonnes Pratiques d'Indexation
+
+1. **Choix des Index**
+   - Utilisez des index uniques pour les identifiants naturels
+   - Utilisez des index standards pour les champs fréquemment recherchés
+   - Évitez d'indexer des champs rarement utilisés dans les recherches
+
+2. **Performance**
+   - Les index améliorent la vitesse de recherche mais ralentissent légèrement les insertions
+   - Limitez le nombre d'index aux champs vraiment nécessaires
+   - Privilégiez les index sur les champs utilisés dans les conditions de recherche fréquentes
+
+3. **Maintenance**
+   - Vérifiez régulièrement l'utilisation des index
+   - Supprimez les index non utilisés
+   - Ajoutez des index si vous constatez des recherches lentes sur certains champs
 
 ## Utilisation comme bibliothèque
 
