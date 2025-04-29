@@ -1,6 +1,7 @@
 package nosql
 
 import (
+	"fmt"
 	"nosql-db/internal/orm/models"
 )
 
@@ -24,24 +25,23 @@ type Field struct {
 
 // Collection représente une collection dans la base de données
 type Collection struct {
-	model *models.DynamicModel
+	model   *models.DynamicModel
+	fields  []Field
+	indexes map[string]string
 }
 
 // AddField ajoute un nouveau champ à la collection
 func (c *Collection) AddField(name string, fieldType FieldType) {
 	c.model.AddField(name, string(fieldType))
+	c.fields = append(c.fields, Field{
+		Name: name,
+		Type: fieldType,
+	})
 }
 
 // GetFields retourne tous les champs de la collection
 func (c *Collection) GetFields() []Field {
-	fields := make([]Field, 0)
-	for _, f := range c.model.GetFields() {
-		fields = append(fields, Field{
-			Name: f.Name,
-			Type: FieldType(f.Type),
-		})
-	}
-	return fields
+	return c.fields
 }
 
 // Insert insère un nouveau document dans la collection
@@ -99,4 +99,40 @@ func (c *Collection) GetAll() ([]map[string]interface{}, error) {
 // Count retourne le nombre de documents dans la collection
 func (c *Collection) Count() int {
 	return c.model.GetCollection().(*models.DynamicCollection).Count()
+}
+
+// Index représente un index sur un champ
+type Index struct {
+	Field string
+	Type  string
+}
+
+// AddIndex ajoute un nouvel index à la collection
+func (c *Collection) AddIndex(field string, indexType string) error {
+	// Vérifier si le champ existe
+	fieldExists := false
+	for _, f := range c.fields {
+		if f.Name == field {
+			fieldExists = true
+			break
+		}
+	}
+	if !fieldExists {
+		return fmt.Errorf("field %s does not exist", field)
+	}
+
+	// Ajouter l'index
+	if c.indexes == nil {
+		c.indexes = make(map[string]string)
+	}
+	c.indexes[field] = indexType
+	return nil
+}
+
+// GetIndexes retourne tous les index de la collection
+func (c *Collection) GetIndexes() map[string]string {
+	if c.indexes == nil {
+		c.indexes = make(map[string]string)
+	}
+	return c.indexes
 }

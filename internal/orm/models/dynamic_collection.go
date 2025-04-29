@@ -15,7 +15,8 @@ type DynamicField struct {
 // DynamicCollection représente une collection avec des champs définis à l'exécution
 type DynamicCollection struct {
 	*orm.Collection[interface{}]
-	fields []DynamicField
+	fields  []DynamicField
+	Indexes map[string]string
 }
 
 // NewDynamicCollection crée une nouvelle collection dynamique
@@ -28,6 +29,7 @@ func NewDynamicCollection(database *db.Database, name string) (*DynamicCollectio
 	return &DynamicCollection{
 		Collection: collection,
 		fields:     make([]DynamicField, 0),
+		Indexes:    make(map[string]string),
 	}, nil
 }
 
@@ -92,4 +94,40 @@ func (dc *DynamicCollection) Update(id string, doc map[string]interface{}) error
 // GetAll retourne tous les documents de la collection
 func (dc *DynamicCollection) GetAll() ([]interface{}, error) {
 	return dc.Collection.Find()
+}
+
+// Index représente un index sur un champ
+type Index struct {
+	Field string
+	Type  string
+}
+
+// AddIndex ajoute un nouvel index à la collection
+func (dc *DynamicCollection) AddIndex(field string, indexType string) error {
+	// Vérifier si le champ existe
+	fieldExists := false
+	for _, f := range dc.fields {
+		if f.Name == field {
+			fieldExists = true
+			break
+		}
+	}
+	if !fieldExists {
+		return fmt.Errorf("field %s does not exist", field)
+	}
+
+	// Ajouter l'index
+	if dc.Indexes == nil {
+		dc.Indexes = make(map[string]string)
+	}
+	dc.Indexes[field] = indexType
+	return nil
+}
+
+// GetIndexes retourne tous les index de la collection
+func (dc *DynamicCollection) GetIndexes() map[string]string {
+	if dc.Indexes == nil {
+		dc.Indexes = make(map[string]string)
+	}
+	return dc.Indexes
 }

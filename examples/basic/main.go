@@ -3,84 +3,111 @@ package main
 import (
 	"fmt"
 	"log"
+
 	"nosql-db/pkg/nosql"
 )
 
 func main() {
-	// Créer une nouvelle instance de la base de données
+	// Créer une nouvelle instance de base de données
 	db, err := nosql.NewDatabase()
 	if err != nil {
-		log.Fatalf("Erreur lors de la création de la base de données: %v", err)
+		log.Fatal(err)
 	}
 
 	// Démarrer la base de données
 	db.Start()
 	defer db.Stop()
 
-	// Créer une nouvelle collection "clients"
-	clients, err := db.CreateCollection("clients")
+	// Créer une collection "products"
+	products, err := db.CreateCollection("products")
 	if err != nil {
-		log.Fatalf("Erreur lors de la création de la collection: %v", err)
+		log.Fatal(err)
 	}
 
-	// Ajouter des champs à la collection
-	clients.AddField("nom", nosql.FieldTypeString)
-	clients.AddField("age", nosql.FieldTypeNumber)
-	clients.AddField("actif", nosql.FieldTypeBoolean)
+	// Ajouter des champs avec différents types
+	products.AddField("name", nosql.FieldTypeString)         // Champ string
+	products.AddField("price", nosql.FieldTypeNumber)        // Champ number
+	products.AddField("stock", nosql.FieldTypeNumber)        // Champ number
+	products.AddField("description", nosql.FieldTypeString)  // Champ string
+	products.AddField("isAvailable", nosql.FieldTypeBoolean) // Champ boolean
 
-	// Insérer un document
-	client := map[string]interface{}{
-		"nom":   "John Doe",
-		"age":   30,
-		"actif": true,
+	// Ajouter des index pour améliorer les performances de recherche
+	products.AddIndex("name", "unique")    // Index unique sur le nom
+	products.AddIndex("price", "standard") // Index standard sur le prix
+	products.AddIndex("stock", "standard") // Index standard sur le stock
+
+	// Afficher les index de la collection
+	fmt.Println("Indexes:", products.GetIndexes())
+
+	// Insérer des documents
+	doc1 := map[string]interface{}{
+		"name":        "Laptop",
+		"price":       999.99,
+		"stock":       50,
+		"description": "High-performance laptop",
+		"isAvailable": true,
 	}
-
-	id, err := clients.Insert(client)
+	id1, err := products.Insert(doc1)
 	if err != nil {
-		log.Printf("Erreur lors de l'insertion: %v", err)
-	} else {
-		fmt.Printf("Client inséré avec l'ID: %s\n", id)
+		log.Fatal(err)
 	}
+	fmt.Printf("Inserted document with ID: %s\n", id1)
 
-	// Récupérer le document
-	doc, err := clients.Get(id)
+	doc2 := map[string]interface{}{
+		"name":        "Smartphone",
+		"price":       599.99,
+		"stock":       100,
+		"description": "Latest model smartphone",
+		"isAvailable": true,
+	}
+	id2, err := products.Insert(doc2)
 	if err != nil {
-		log.Printf("Erreur lors de la récupération: %v", err)
-	} else {
-		fmt.Printf("Client récupéré: %v\n", doc)
+		log.Fatal(err)
 	}
+	fmt.Printf("Inserted document with ID: %s\n", id2)
 
-	// Mettre à jour le document
-	doc["age"] = 31
-	if err := clients.Update(id, doc); err != nil {
-		log.Printf("Erreur lors de la mise à jour: %v", err)
-	} else {
-		fmt.Println("Client mis à jour avec succès")
-	}
-
-	// Rechercher des clients par âge
-	results, err := clients.FindByField("age", 31)
+	// Récupérer un document par ID
+	product, err := products.Get(id1)
 	if err != nil {
-		log.Printf("Erreur lors de la recherche: %v", err)
-	} else {
-		fmt.Printf("Clients trouvés: %v\n", results)
+		log.Fatal(err)
 	}
+	fmt.Printf("Retrieved product: %+v\n", product)
 
-	// Lister tous les clients
-	allClients, err := clients.GetAll()
+	// Mettre à jour un document
+	updates := map[string]interface{}{
+		"price": 899.99,
+		"stock": 45,
+	}
+	if err := products.Update(id1, updates); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Document updated successfully")
+
+	// Rechercher des produits par prix
+	results, err := products.FindByField("price", 599.99)
 	if err != nil {
-		log.Printf("Erreur lors de la récupération de tous les clients: %v", err)
-	} else {
-		fmt.Printf("Nombre total de clients: %d\n", len(allClients))
-		for i, client := range allClients {
-			fmt.Printf("%d. %v\n", i+1, client)
-		}
+		log.Fatal(err)
 	}
+	fmt.Printf("Products with price 599.99: %+v\n", results)
 
-	// Supprimer le client
-	if err := clients.Delete(id); err != nil {
-		log.Printf("Erreur lors de la suppression: %v", err)
-	} else {
-		fmt.Println("Client supprimé avec succès")
+	// Lister tous les produits
+	allProducts, err := products.GetAll()
+	if err != nil {
+		log.Fatal(err)
 	}
+	fmt.Printf("All products: %+v\n", allProducts)
+
+	// Compter le nombre de documents
+	count := products.Count()
+	fmt.Printf("Total number of products: %d\n", count)
+
+	// Supprimer un document
+	if err := products.Delete(id2); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Document deleted successfully")
+
+	// Vérifier que le document a été supprimé
+	count = products.Count()
+	fmt.Printf("Total number of products after deletion: %d\n", count)
 }

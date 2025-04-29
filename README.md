@@ -1,6 +1,6 @@
-# NoSQL Database with ORM
+# Base de données NoSQL avec ORM en Go
 
-Une base de données NoSQL légère avec un ORM intégré et une interface en ligne de commande, écrite en Go.
+Une bibliothèque Go légère pour une base de données NoSQL avec un ORM intégré, offrant une interface simple pour la gestion des données avec typage dynamique et indexation.
 
 ## Table des matières
 
@@ -33,7 +33,7 @@ Une base de données NoSQL légère avec un ORM intégré et une interface en li
 ### Installation via Go
 
 ```bash
-go get github.com/NicolasBAELE/nosql-db
+go get nosql-db
 ```
 
 ### Installation depuis les sources
@@ -186,7 +186,7 @@ La CLI permet d'interagir avec la base de données sans avoir à écrire de code
 ### Démarrage
 
 ```bash
-go run examples/cli/main.go
+go run cmd/cli/main.go
 ```
 
 ### Création de collections
@@ -214,7 +214,6 @@ go run examples/cli/main.go
 Consultez le dossier `examples` pour des exemples d'utilisation :
 
 - `examples/basic` : Utilisation basique de la bibliothèque
-- `examples/cli` : Utilisation de l'interface en ligne de commande
 
 ## Documentation de l'API
 
