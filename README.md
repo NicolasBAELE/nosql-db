@@ -28,7 +28,7 @@ Une base de données NoSQL simple et légère implémentée en Go, avec un serve
 
 1. Cloner le repository :
 ```bash
-git clone github.com/NicolasBAELE/nosql-db
+git clone https://github.com/NicolasBAELE/nosql-db.git
 cd nosql-db
 ```
 
