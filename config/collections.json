@@ -1,0 +1,17 @@
+{
+    "collections": [
+        {
+            "name": "books",
+            "indexes": [
+                {
+                    "field": "title",
+                    "unique": false
+                },
+                {
+                    "field": "iban",
+                    "unique": true
+                }
+            ]
+        }
+    ]
+} 

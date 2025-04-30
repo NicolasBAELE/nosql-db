@@ -213,7 +213,7 @@ func (c *Collection) FindByIndex(field string, value interface{}) ([]Document, e
 }
 
 // Update met à jour un document existant
-func (c *Collection) Update(id string, doc Document) error {
+func (c *Collection) Update(id string, updates Document) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -223,53 +223,59 @@ func (c *Collection) Update(id string, doc Document) error {
 		return fmt.Errorf("document %s n'existe pas", id)
 	}
 
-	// Lire le document existant pour vérifier les contraintes d'index unique
-	existingData, err := os.ReadFile(path)
+	// Lire le document existant
+	content, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("erreur lecture fichier: %v", err)
+		return err
 	}
 
 	var existingDoc Document
-	if err := json.Unmarshal(existingData, &existingDoc); err != nil {
-		return fmt.Errorf("erreur désérialisation: %v", err)
+	if err := json.Unmarshal(content, &existingDoc); err != nil {
+		return err
 	}
 
-	// Vérifier les contraintes d'index unique pour les champs modifiés
-	for _, index := range c.indexes {
+	// Mettre à jour uniquement les champs fournis
+	for key, value := range updates {
+		existingDoc[key] = value
+	}
+
+	// Vérifier les contraintes d'index unique
+	for field, index := range c.indexes {
 		if index.unique {
-			if newValue, exists := doc[index.field]; exists {
-				if oldValue, oldExists := existingDoc[index.field]; oldExists && oldValue != newValue {
-					if len(index.values[newValue]) > 0 {
-						return fmt.Errorf("violation de contrainte unique sur %s: %v", index.field, newValue)
+			if value, exists := existingDoc[field]; exists {
+				// Vérifier si la nouvelle valeur est unique
+				if ids, exists := index.values[value]; exists {
+					// Si l'ID n'est pas dans la liste ou s'il y a plus d'un ID, c'est une violation
+					if len(ids) > 1 || (len(ids) == 1 && ids[0] != id) {
+						return fmt.Errorf("violation de contrainte unique sur %s: %v", field, value)
 					}
 				}
 			}
 		}
 	}
 
-	// Conserver l'ID existant
-	doc["_id"] = id
-
 	// Sauvegarder le document mis à jour
-	data, err := json.Marshal(doc)
+	data, err := json.Marshal(existingDoc)
 	if err != nil {
-		return fmt.Errorf("erreur sérialisation: %v", err)
+		return err
 	}
 
 	if err := os.WriteFile(path, data, 0644); err != nil {
-		return fmt.Errorf("erreur écriture fichier: %v", err)
+		return err
 	}
 
 	// Mettre à jour les indexs
-	for _, index := range c.indexes {
-		if value, exists := doc[index.field]; exists {
+	for field, index := range c.indexes {
+		if value, exists := existingDoc[field]; exists {
 			index.mu.Lock()
 			// Supprimer l'ancienne valeur de l'index
-			if oldValue, oldExists := existingDoc[index.field]; oldExists {
-				for i, docID := range index.values[oldValue] {
-					if docID == id {
-						index.values[oldValue] = append(index.values[oldValue][:i], index.values[oldValue][i+1:]...)
-						break
+			if oldValue, oldExists := existingDoc[field]; oldExists {
+				if ids, exists := index.values[oldValue]; exists {
+					for i, docID := range ids {
+						if docID == id {
+							index.values[oldValue] = append(ids[:i], ids[i+1:]...)
+							break
+						}
 					}
 				}
 			}
@@ -336,4 +342,100 @@ func generateID() string {
 // GetPath retourne le chemin de la collection
 func (c *Collection) GetPath() string {
 	return c.path
+}
+
+// GetCollections retourne toutes les collections de la base de données
+func (db *Database) GetCollections() map[string]*Collection {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	return db.collections
+}
+
+// GetCollection retourne une collection par son nom
+func (db *Database) GetCollection(name string) (*Collection, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	collection, exists := db.collections[name]
+	if !exists {
+		return nil, fmt.Errorf("collection %s n'existe pas", name)
+	}
+
+	return collection, nil
+}
+
+// GetAllDocuments retourne tous les documents d'une collection
+func (c *Collection) GetAllDocuments() ([]Document, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	files, err := os.ReadDir(c.path)
+	if err != nil {
+		return nil, err
+	}
+
+	var documents []Document
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		content, err := os.ReadFile(filepath.Join(c.path, file.Name()))
+		if err != nil {
+			continue
+		}
+
+		var doc Document
+		if err := json.Unmarshal(content, &doc); err != nil {
+			continue
+		}
+
+		documents = append(documents, doc)
+	}
+
+	return documents, nil
+}
+
+// FindByField trouve des documents par valeur d'un champ
+func (c *Collection) FindByField(field string, value interface{}) ([]Document, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	// Si le champ est indexé, utiliser l'index
+	if _, exists := c.indexes[field]; exists {
+		return c.FindByIndex(field, value)
+	}
+
+	// Sinon, chercher dans tous les documents
+	files, err := os.ReadDir(c.path)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []Document
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		content, err := os.ReadFile(filepath.Join(c.path, file.Name()))
+		if err != nil {
+			continue
+		}
+
+		var doc Document
+		if err := json.Unmarshal(content, &doc); err != nil {
+			continue
+		}
+
+		// Comparer la valeur du champ
+		if docValue, exists := doc[field]; exists {
+			// Comparaison basique pour les types simples
+			if docValue == value {
+				results = append(results, doc)
+			}
+		}
+	}
+
+	return results, nil
 }

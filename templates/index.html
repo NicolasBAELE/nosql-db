@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NoSQL Database</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .collection {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .collection h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .document {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        pre {
+            background: #eee;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>NoSQL Database Collections</h1>
+    
+    {{range .Collections}}
+    <div class="collection">
+        <h2>Collection: {{.Name}}</h2>
+        {{if .Documents}}
+            <h3>Documents:</h3>
+            {{range .Documents}}
+            <div class="document">
+                <pre>{{json .}}</pre>
+            </div>
+            {{end}}
+        {{else}}
+            <p>No documents in this collection</p>
+        {{end}}
+    </div>
+    {{end}}
+</body>
+</html> 
