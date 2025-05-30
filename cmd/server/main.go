@@ -71,6 +71,9 @@ func main() {
 					indexConfig.Field, collectionConfig.Name, err)
 			}
 		}
+
+		// Afficher les correspondances des indexs
+		collection.PrintIndexMappings()
 	}
 
 	// Créer un nouveau routeur

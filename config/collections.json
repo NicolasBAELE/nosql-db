@@ -12,6 +12,15 @@
                     "unique": true
                 }
             ]
+        },
+        {
+            "name": "users",
+            "indexes": [
+                {
+                    "field": "name",
+                    "unique": true
+                }
+            ]
         }
     ]
 } 

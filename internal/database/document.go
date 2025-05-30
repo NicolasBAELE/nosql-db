@@ -5,120 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
-	"time"
 )
-
-// Document représente un document dans la base de données
-type Document map[string]interface{}
-
-// Index représente un index sur un champ
-type Index struct {
-	field  string
-	values map[interface{}][]string // valeur -> liste d'IDs
-	unique bool                     // indique si l'index est unique
-	mu     sync.RWMutex
-}
-
-// Collection représente une collection de documents
-type Collection struct {
-	name    string
-	path    string
-	indexes map[string]*Index
-	mu      sync.RWMutex
-}
-
-// Database représente la base de données
-type Database struct {
-	path        string
-	collections map[string]*Collection
-	mu          sync.RWMutex
-}
-
-// NewDatabase crée une nouvelle instance de base de données
-func NewDatabase(path string) (*Database, error) {
-	if err := os.MkdirAll(path, 0755); err != nil {
-		return nil, fmt.Errorf("erreur création répertoire: %v", err)
-	}
-
-	return &Database{
-		path:        path,
-		collections: make(map[string]*Collection),
-	}, nil
-}
-
-// CreateCollection crée une nouvelle collection
-func (db *Database) CreateCollection(name string) (*Collection, error) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	if _, exists := db.collections[name]; exists {
-		return nil, fmt.Errorf("collection %s existe déjà", name)
-	}
-
-	path := filepath.Join(db.path, name)
-	if err := os.MkdirAll(path, 0755); err != nil {
-		return nil, fmt.Errorf("erreur création répertoire collection: %v", err)
-	}
-
-	collection := &Collection{
-		name:    name,
-		path:    path,
-		indexes: make(map[string]*Index),
-	}
-
-	db.collections[name] = collection
-	return collection, nil
-}
-
-// CreateIndex crée un index sur un champ
-func (c *Collection) CreateIndex(field string, unique bool) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if _, exists := c.indexes[field]; exists {
-		return fmt.Errorf("index %s existe déjà", field)
-	}
-
-	index := &Index{
-		field:  field,
-		values: make(map[interface{}][]string),
-		unique: unique,
-	}
-
-	// Construire l'index à partir des documents existants
-	files, err := os.ReadDir(c.path)
-	if err != nil {
-		return fmt.Errorf("erreur lecture répertoire: %v", err)
-	}
-
-	for _, file := range files {
-		if filepath.Ext(file.Name()) != ".json" {
-			continue
-		}
-
-		data, err := os.ReadFile(filepath.Join(c.path, file.Name()))
-		if err != nil {
-			return fmt.Errorf("erreur lecture fichier: %v", err)
-		}
-
-		var doc Document
-		if err := json.Unmarshal(data, &doc); err != nil {
-			return fmt.Errorf("erreur désérialisation: %v", err)
-		}
-
-		if value, exists := doc[field]; exists {
-			if unique && len(index.values[value]) > 0 {
-				return fmt.Errorf("valeur dupliquée pour l'index unique %s: %v", field, value)
-			}
-			id := file.Name()[:len(file.Name())-5] // Retirer .json
-			index.values[value] = append(index.values[value], id)
-		}
-	}
-
-	c.indexes[field] = index
-	return nil
-}
 
 // Insert insère un document dans la collection
 func (c *Collection) Insert(doc Document) (string, error) {
@@ -180,36 +67,6 @@ func (c *Collection) FindByID(id string) (Document, error) {
 	}
 
 	return doc, nil
-}
-
-// FindByIndex trouve des documents par valeur d'index
-func (c *Collection) FindByIndex(field string, value interface{}) ([]Document, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	index, exists := c.indexes[field]
-	if !exists {
-		return nil, fmt.Errorf("index %s n'existe pas", field)
-	}
-
-	index.mu.RLock()
-	ids, exists := index.values[value]
-	index.mu.RUnlock()
-
-	if !exists {
-		return nil, nil
-	}
-
-	var results []Document
-	for _, id := range ids {
-		doc, err := c.FindByID(id)
-		if err != nil {
-			return nil, err
-		}
-		results = append(results, doc)
-	}
-
-	return results, nil
 }
 
 // Update met à jour un document existant
@@ -332,36 +189,6 @@ func (c *Collection) Delete(id string) error {
 	}
 
 	return nil
-}
-
-// generateID génère un ID unique
-func generateID() string {
-	return fmt.Sprintf("%x", time.Now().UnixNano())
-}
-
-// GetPath retourne le chemin de la collection
-func (c *Collection) GetPath() string {
-	return c.path
-}
-
-// GetCollections retourne toutes les collections de la base de données
-func (db *Database) GetCollections() map[string]*Collection {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-	return db.collections
-}
-
-// GetCollection retourne une collection par son nom
-func (db *Database) GetCollection(name string) (*Collection, error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	collection, exists := db.collections[name]
-	if !exists {
-		return nil, fmt.Errorf("collection %s n'existe pas", name)
-	}
-
-	return collection, nil
 }
 
 // GetAllDocuments retourne tous les documents d'une collection
