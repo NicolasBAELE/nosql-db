@@ -31,8 +31,8 @@ type Config struct {
 }
 
 type CollectionData struct {
-	Name      string
-	Documents []database.Document
+	Name      string              `json:"name"`
+	Documents []database.Document `json:"documents"`
 }
 
 type PageData struct {
@@ -96,12 +96,20 @@ func main() {
 			})
 	}
 
-	// Configurer la route racine en dernier
-	mux.HandleFunc("/", handleIndex)
+	// Routes pour les transactions
+	mux.HandleFunc("/api/transaction/begin", handleTransactionBegin)
+	mux.HandleFunc("/api/transaction/commit", handleTransactionCommit)
+	mux.HandleFunc("/api/transaction/rollback", handleTransactionRollback)
+	mux.HandleFunc("/api/transaction/", handleTransactionOperation)
+
+	// Configurer les routes pour les interfaces
+	mux.HandleFunc("/", handleIndex)                         // Interface HTML classique
+	mux.HandleFunc("/vue", handleVueApp)                     // Interface Vue.js
+	mux.HandleFunc("/api/collections", handleCollectionsAPI) // API pour Vue.js
 
 	// Démarrer le serveur avec le routeur personnalisé
-	log.Println("Serveur démarré sur http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Println("Serveur démarré sur http://localhost:8081")
+	log.Fatal(http.ListenAndServe(":8081", mux))
 }
 
 func loadConfig(path string) (*Config, error) {
@@ -156,6 +164,39 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl.Execute(w, data)
+}
+
+func handleVueApp(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "templates/vue-app.html")
+}
+
+func handleCollectionsAPI(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Récupérer les données de toutes les collections
+	var collections []CollectionData
+	for name := range db.GetCollections() {
+		collection, err := db.GetCollection(name)
+		if err != nil {
+			continue
+		}
+
+		documents, err := collection.GetAllDocuments()
+		if err != nil {
+			continue
+		}
+
+		collections = append(collections, CollectionData{
+			Name:      name,
+			Documents: documents,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(collections)
 }
 
 func handleCollection(w http.ResponseWriter, r *http.Request, collectionName string) {
@@ -296,4 +337,223 @@ func handleCollectionSearch(w http.ResponseWriter, r *http.Request, collectionNa
 	}
 
 	json.NewEncoder(w).Encode(documents)
+}
+
+// Handlers pour les transactions
+
+// handleTransactionBegin commence une nouvelle transaction
+func handleTransactionBegin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	tx := db.BeginTransaction()
+	response := map[string]interface{}{
+		"transaction_id": tx.ID,
+		"status":         "active",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleTransactionCommit valide une transaction
+func handleTransactionCommit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request struct {
+		TransactionID string `json:"transaction_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	tx, exists := db.GetTransaction(request.TransactionID)
+	if !exists {
+		http.Error(w, "Transaction not found", http.StatusNotFound)
+		return
+	}
+
+	if err := db.Commit(tx); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"transaction_id": request.TransactionID,
+		"status":         "committed",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleTransactionRollback annule une transaction
+func handleTransactionRollback(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request struct {
+		TransactionID string `json:"transaction_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	tx, exists := db.GetTransaction(request.TransactionID)
+	if !exists {
+		http.Error(w, "Transaction not found", http.StatusNotFound)
+		return
+	}
+
+	if err := db.Rollback(tx); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"transaction_id": request.TransactionID,
+		"status":         "rolled_back",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleTransactionOperation gère les opérations dans une transaction
+func handleTransactionOperation(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 5 {
+		http.Error(w, "Invalid transaction operation path", http.StatusBadRequest)
+		return
+	}
+
+	transactionID := parts[3]
+	operation := parts[4]
+
+	tx, exists := db.GetTransaction(transactionID)
+	if !exists {
+		http.Error(w, "Transaction not found", http.StatusNotFound)
+		return
+	}
+
+	switch operation {
+	case "insert":
+		handleTransactionInsert(w, r, tx)
+	case "update":
+		handleTransactionUpdate(w, r, tx)
+	case "delete":
+		handleTransactionDelete(w, r, tx)
+	default:
+		http.Error(w, "Unknown transaction operation", http.StatusBadRequest)
+	}
+}
+
+// handleTransactionInsert insère un document dans une transaction
+func handleTransactionInsert(w http.ResponseWriter, r *http.Request, tx *database.Transaction) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request struct {
+		Collection string            `json:"collection"`
+		Document   database.Document `json:"document"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id, err := db.InsertWithTransaction(tx, request.Collection, request.Document)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"id":       id,
+		"document": request.Document,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleTransactionUpdate met à jour un document dans une transaction
+func handleTransactionUpdate(w http.ResponseWriter, r *http.Request, tx *database.Transaction) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request struct {
+		Collection string            `json:"collection"`
+		DocumentID string            `json:"document_id"`
+		Updates    database.Document `json:"updates"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	collection, err := db.GetCollection(request.Collection)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Collection %s does not exist", request.Collection), http.StatusNotFound)
+		return
+	}
+
+	if err := db.UpdateWithTransaction(tx, request.Collection, request.DocumentID, request.Updates); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Retourner le document mis à jour
+	updatedDoc, err := collection.FindByID(request.DocumentID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updatedDoc)
+}
+
+// handleTransactionDelete supprime un document dans une transaction
+func handleTransactionDelete(w http.ResponseWriter, r *http.Request, tx *database.Transaction) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request struct {
+		Collection string `json:"collection"`
+		DocumentID string `json:"document_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := db.DeleteWithTransaction(tx, request.Collection, request.DocumentID); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
