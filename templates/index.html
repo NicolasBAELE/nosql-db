@@ -6,48 +6,536 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
         }
         .collection {
-            border: 1px solid #ccc;
-            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            padding: 20px;
             margin-bottom: 20px;
-            border-radius: 5px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .collection h2 {
             margin-top: 0;
-            color: #333;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
         }
         .document {
-            background: #f5f5f5;
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 3px;
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
         }
-        pre {
-            background: #eee;
+        .document-actions {
+            margin-top: 10px;
+        }
+        .btn {
+            padding: 8px 16px;
+            margin: 2px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-secondary { background: #95a5a6; color: white; }
+        .btn:hover { opacity: 0.8; }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover { color: #000; }
+        
+        .transaction-panel {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #e67e22;
+        }
+        .transaction-status {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .transaction-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .alert {
             padding: 10px;
-            border-radius: 3px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        
+        .hidden { display: none; }
+        
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
             overflow-x: auto;
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
-    <h1>NoSQL Database Collections</h1>
-    
-    {{range .Collections}}
-    <div class="collection">
-        <h2>Collection: {{.Name}}</h2>
-        {{if .Documents}}
-            <h3>Documents:</h3>
-            {{range .Documents}}
-            <div class="document">
-                <pre>{{json .}}</pre>
+    <div class="container">
+        <div class="header">
+            <h1>NoSQL Database Management</h1>
+            <p>Manage your collections and documents with transaction support</p>
+        </div>
+
+        <!-- Transaction Panel -->
+        <div class="transaction-panel">
+            <div class="transaction-status" id="transactionStatus">
+                No active transaction
             </div>
+            <div class="transaction-actions">
+                <button class="btn btn-primary" onclick="beginTransaction()">Begin Transaction</button>
+                <button class="btn btn-success" onclick="commitTransaction()" id="commitBtn" disabled>Commit Transaction</button>
+                <button class="btn btn-danger" onclick="rollbackTransaction()" id="rollbackBtn" disabled>Rollback Transaction</button>
+            </div>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="alertContainer"></div>
+
+        {{range .Collections}}
+        <div class="collection">
+            <h2>Collection: {{.Name}}</h2>
+            
+            <!-- Add Document Form -->
+            <div class="form-group">
+                <button class="btn btn-primary" onclick="showAddForm('{{.Name}}')">Add New Document</button>
+            </div>
+
+            {{if .Documents}}
+                <h3>Documents:</h3>
+                {{range .Documents}}
+                <div class="document" data-id="{{._id}}" data-collection="{{$.Name}}">
+                    <pre>{{json .}}</pre>
+                                         <div class="document-actions">
+                         <button class="btn btn-warning" onclick="showEditForm('{{$.Name}}', '{{._id}}', '{{json .}}')">Edit</button>
+                         <button class="btn btn-danger" onclick="showDeleteConfirm('{{$.Name}}', '{{._id}}')">Delete</button>
+                     </div>
+                </div>
+                {{end}}
+            {{else}}
+                <p>No documents in this collection</p>
             {{end}}
-        {{else}}
-            <p>No documents in this collection</p>
+        </div>
         {{end}}
     </div>
-    {{end}}
+
+    <!-- Add Document Modal -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('addModal')">&times;</span>
+            <h3>Add New Document</h3>
+            <form id="addForm">
+                <div class="form-group">
+                    <label for="addCollection">Collection:</label>
+                    <input type="text" id="addCollection" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="addTitle">Title:</label>
+                    <input type="text" id="addTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="addIban">IBAN:</label>
+                    <input type="text" id="addIban" required>
+                </div>
+                <div class="form-group">
+                    <label for="addDescription">Description:</label>
+                    <textarea id="addDescription"></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-success">Add Document</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Document Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('editModal')">&times;</span>
+            <h3>Edit Document</h3>
+            <form id="editForm">
+                <div class="form-group">
+                    <label for="editCollection">Collection:</label>
+                    <input type="text" id="editCollection" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="editId">Document ID:</label>
+                    <input type="text" id="editId" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="editTitle">Title:</label>
+                    <input type="text" id="editTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="editIban">IBAN:</label>
+                    <input type="text" id="editIban" required>
+                </div>
+                <div class="form-group">
+                    <label for="editDescription">Description:</label>
+                    <textarea id="editDescription"></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-success">Update Document</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('deleteModal')">&times;</span>
+            <h3>Confirm Delete</h3>
+            <p>Are you sure you want to delete this document?</p>
+            <p><strong>Collection:</strong> <span id="deleteCollection"></span></p>
+            <p><strong>Document ID:</strong> <span id="deleteId"></span></p>
+            <div class="form-group">
+                <button class="btn btn-danger" onclick="deleteDocument()">Delete</button>
+                <button class="btn btn-secondary" onclick="closeModal('deleteModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTransactionId = null;
+        let pendingOperations = [];
+
+        // Transaction Management
+        async function beginTransaction() {
+            try {
+                const response = await fetch('/api/transaction/begin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    currentTransactionId = result.transaction_id;
+                    updateTransactionStatus('Transaction active: ' + currentTransactionId);
+                    document.getElementById('commitBtn').disabled = false;
+                    document.getElementById('rollbackBtn').disabled = false;
+                    showAlert('Transaction started successfully', 'success');
+                } else {
+                    showAlert('Failed to start transaction: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error starting transaction: ' + error.message, 'error');
+            }
+        }
+
+        async function commitTransaction() {
+            if (!currentTransactionId) {
+                showAlert('No active transaction', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/transaction/commit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ transaction_id: currentTransactionId })
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Transaction committed successfully', 'success');
+                    resetTransaction();
+                    location.reload(); // Refresh to show updated data
+                } else {
+                    showAlert('Failed to commit transaction: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error committing transaction: ' + error.message, 'error');
+            }
+        }
+
+        async function rollbackTransaction() {
+            if (!currentTransactionId) {
+                showAlert('No active transaction', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/transaction/rollback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ transaction_id: currentTransactionId })
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Transaction rolled back successfully', 'success');
+                    resetTransaction();
+                } else {
+                    showAlert('Failed to rollback transaction: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error rolling back transaction: ' + error.message, 'error');
+            }
+        }
+
+        function resetTransaction() {
+            currentTransactionId = null;
+            pendingOperations = [];
+            updateTransactionStatus('No active transaction');
+            document.getElementById('commitBtn').disabled = true;
+            document.getElementById('rollbackBtn').disabled = true;
+        }
+
+        function updateTransactionStatus(status) {
+            document.getElementById('transactionStatus').textContent = status;
+        }
+
+        // Form Management
+        function showAddForm(collectionName) {
+            if (!currentTransactionId) {
+                showAlert('Please start a transaction first', 'info');
+                return;
+            }
+
+            document.getElementById('addCollection').value = collectionName;
+            document.getElementById('addTitle').value = '';
+            document.getElementById('addIban').value = '';
+            document.getElementById('addDescription').value = '';
+            document.getElementById('addModal').style.display = 'block';
+        }
+
+        function showEditForm(collectionName, documentId, documentJson) {
+            if (!currentTransactionId) {
+                showAlert('Please start a transaction first', 'info');
+                return;
+            }
+
+            try {
+                const document = JSON.parse(documentJson);
+                document.getElementById('editCollection').value = collectionName;
+                document.getElementById('editId').value = documentId;
+                document.getElementById('editTitle').value = document.title || '';
+                document.getElementById('editIban').value = document.iban || '';
+                document.getElementById('editDescription').value = document.description || '';
+                document.getElementById('editModal').style.display = 'block';
+            } catch (error) {
+                showAlert('Error parsing document data: ' + error.message, 'error');
+            }
+        }
+
+        function showDeleteConfirm(collectionName, documentId) {
+            if (!currentTransactionId) {
+                showAlert('Please start a transaction first', 'info');
+                return;
+            }
+
+            document.getElementById('deleteCollection').textContent = collectionName;
+            document.getElementById('deleteId').textContent = documentId;
+            document.getElementById('deleteModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Form Submissions
+        document.getElementById('addForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                collection: document.getElementById('addCollection').value,
+                document: {
+                    title: document.getElementById('addTitle').value,
+                    iban: document.getElementById('addIban').value,
+                    description: document.getElementById('addDescription').value
+                }
+            };
+
+            try {
+                const response = await fetch(`/api/transaction/${currentTransactionId}/insert`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Document added to transaction successfully', 'success');
+                    closeModal('addModal');
+                    pendingOperations.push({ type: 'add', data: result });
+                } else {
+                    showAlert('Failed to add document: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error adding document: ' + error.message, 'error');
+            }
+        });
+
+        document.getElementById('editForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                collection: document.getElementById('editCollection').value,
+                document_id: document.getElementById('editId').value,
+                updates: {
+                    title: document.getElementById('editTitle').value,
+                    iban: document.getElementById('editIban').value,
+                    description: document.getElementById('editDescription').value
+                }
+            };
+
+            try {
+                const response = await fetch(`/api/transaction/${currentTransactionId}/update`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Document updated in transaction successfully', 'success');
+                    closeModal('editModal');
+                    pendingOperations.push({ type: 'update', data: result });
+                } else {
+                    showAlert('Failed to update document: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error updating document: ' + error.message, 'error');
+            }
+        });
+
+        async function deleteDocument() {
+            const collectionName = document.getElementById('deleteCollection').textContent;
+            const documentId = document.getElementById('deleteId').textContent;
+            
+            const formData = {
+                collection: collectionName,
+                document_id: documentId
+            };
+
+            try {
+                const response = await fetch(`/api/transaction/${currentTransactionId}/delete`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (response.ok) {
+                    showAlert('Document deleted from transaction successfully', 'success');
+                    closeModal('deleteModal');
+                    pendingOperations.push({ type: 'delete', data: formData });
+                } else {
+                    const result = await response.json();
+                    showAlert('Failed to delete document: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error deleting document: ' + error.message, 'error');
+            }
+        }
+
+        // Utility Functions
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+
+        // Expose functions to global scope for HTML onclick
+        window.beginTransaction = beginTransaction;
+        window.commitTransaction = commitTransaction;
+        window.rollbackTransaction = rollbackTransaction;
+        window.showAddForm = showAddForm;
+        window.showEditForm = showEditForm;
+        window.showDeleteConfirm = showDeleteConfirm;
+        window.closeModal = closeModal;
+        window.deleteDocument = deleteDocument;
+    </script>
 </body>
 </html> 
