@@ -10,7 +10,7 @@ Une base de données NoSQL simple et légère implémentée en Go, avec un serve
 - Interface web pour visualiser les données
 - Configuration des collections via fichier JSON
 - Recherche par champ indexé
-- **Système de transactions ACID avec WAL (Write-Ahead Logging)**
+- Système de transactions ACID avec WAL (Write-Ahead Logging)
 
 ## Structure du Projet
 
@@ -211,6 +211,34 @@ L'interface web est accessible à l'adresse `http://localhost:8080/`. Elle perme
 
 - Go 1.24.1 ou supérieur
 - Aucune dépendance externe
+
+## État de l'art des bases de données NoSQL - Analyse comparative
+
+Comparaison avec les solutions NoSQL existantes
+1. MongoDB (Leader du marché)
+   * Une base de données NoSQL qui utilise des documents pour stocker des données.
+   * Avantages : Écosystème mature, sharding, réplication, agrégations puissantes
+   * Inconvénients : Complexité, ressources importantes, licence commerciale
+2. Redis
+   * Bases de données Clé-Valeur
+   * Avantages : Performance extrême, structures de données riches
+   * Inconvénients : Stockage en mémoire, coût élevé pour de gros volumes
+3. Cassandra
+   * Bases de données Orientées Colonnes
+   * Avantages : Scalabilité horizontale, haute disponibilité
+   * Inconvénients : Complexité, courbe d'apprentissage
+4. Neo4j
+   * Bases de données Graph
+   * Avantages : Requêtes graphiques puissantes, ACID
+   * Inconvénients : Spécialisé, coût élevé
+
+ ### Conclusion :
+ Notre projet est une implémentation pédagogique d'une base de données NoSQL documentaire. Il démontre les concepts fondamentaux (documents, collections, index, transactions) de manière claire et accessible.
+ 
+* Points forts majeurs :
+  - Simplicité d'utilisation et de déploiement
+  - Robuste : Transactions ACID robustes avec WAL
+  - Léger : Solution autonome sans dépendances
 
 ## Licence
 
